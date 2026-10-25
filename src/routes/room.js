@@ -11,7 +11,7 @@ const {
 } = require('../controller/roomController');
 
 roomRouter.post('/', validate(room.createRoom), createRoom);
-roomRouter.post('/:roomCode/join',validate(room.roomId),validate(room.joinRoom), joinRoom);
+roomRouter.post('/:roomCode/join',validate(room.roomId, 'params'),validate(room.joinRoom), joinRoom);
 
 module.exports = roomRouter
 
