@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GuessMaster | Play Together</title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="page-header">
+        <h1>GuessMaster</h1>
+        <p>Create a room, invite your friends, and guess the answer!</p>
+      </header>
+
+      <p id="message" class="message" role="status" aria-live="polite"></p>
+
+      <section class="forms-grid" id="entry-section">
+        <div class="card">
+          <h2>Host a Game</h2>
+          <p>Create a private room and challenge your friends.</p>
+
+          <form id="create-room-form">
+            <label for="host-nickname">Your nickname</label>
+            <input
+              id="host-nickname"
+              name="nickname"
+              type="text"
+              minlength="2"
+              maxlength="20"
+              placeholder="Enter your nickname"
+              required
+            />
+            <button type="submit">Create Room</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Join a Game</h2>
+          <p>Enter the room code shared by your host.</p>
+
+          <form id="join-room-form">
+            <label for="player-nickname">Your nickname</label>
+            <input
+              id="player-nickname"
+              name="nickname"
+              type="text"
+              minlength="2"
+              maxlength="20"
+              placeholder="Enter your nickname"
+              required
+            />
+
+            <label for="room-code">Room code</label>
+            <input
+              id="room-code"
+              name="roomCode"
+              type="text"
+              minlength="6"
+              maxlength="6"
+              placeholder="e.g. AB23CD"
+              autocomplete="off"
+              required
+            />
+
+            <button type="submit">Join Room</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="lobby-section" class="card lobby hidden">
+        <div class="lobby-heading">
+          <div>
+            <h2>Game Lobby</h2>
+            <p>Share this code with your friends.</p>
+          </div>
+          <span id="room-status" class="status">Waiting</span>
+        </div>
+
+        <div class="room-code-box">
+          <span>ROOM CODE</span>
+          <strong id="display-room-code">------</strong>
+          <button type="button" id="copy-code-button" class="secondary-button">
+            Copy Code
+          </button>
+        </div>
+
+        <div class="host-details">
+          <h3>Host</h3>
+          <p id="host-name">Waiting for host information...</p>
+        </div>
+
+        <div class="players-heading">
+          <h3>Players</h3>
+          <span id="player-count">0 players</span>
+        </div>
+
+        <ul id="player-list" class="player-list"></ul>
+
+        <p id="lobby-note" class="muted">
+          Waiting for players to join. The host cannot guess.
+        </p>
+
+        <div class="round-info">
+          <h3>Current Question</h3>
+          <p id="question-display">The host has not set a question yet.</p>
+
+          <p>
+            <strong>Time remaining:</strong>
+            <span id="round-timer">Not started</span>
+          </p>
+
+          <div id="answer-reveal" class="hidden">
+            <p>
+              <strong>Correct answer:</strong>
+              <span id="correct-answer-display"></span>
+            </p>
+            <p id="winner-display"></p>
+          </div>
+        </div>
+
+        <div id="host-controls" class="hidden">
+          <h3>Host Controls</h3>
+
+          <form id="host-question-form">
+            <label for="question-input">Question</label>
+            <textarea
+              id="question-input"
+              name="question"
+              maxlength="500"
+              placeholder="Enter your question"
+              required
+            ></textarea>
+
+            <label for="answer-input">Correct answer</label>
+            <input
+              id="answer-input"
+              name="correctAnswer"
+              type="text"
+              maxlength="100"
+              placeholder="Enter the correct answer"
+              required
+            />
+
+            <button type="submit" id="save-question-button">
+              Save Question
+            </button>
+          </form>
+
+          <button type="button" id="start-round-button" disabled>
+            Start 60-Second Round
+          </button>
+
+          <button type="button" id="end-game-button" class="danger-button">
+            End Game
+          </button>
+
+          <button
+            type="button"
+            id="restart-game-button"
+            class="secondary-button hidden"
+          >
+            Start New Game
+          </button>
+        </div>
+
+        <div id="player-controls" class="hidden">
+          <h3>Your Guess</h3>
+
+          <form id="guess-form">
+            <label for="guess-input">Enter your answer</label>
+            <input
+              id="guess-input"
+              name="guess"
+              type="text"
+              maxlength="100"
+              placeholder="What is your answer?"
+              required
+            />
+            <button type="submit" id="submit-guess-button">Submit Guess</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/game.js"></script>
+  </body>
+</html>
