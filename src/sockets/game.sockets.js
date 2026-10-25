@@ -38,7 +38,9 @@ async function getRoomData(roomCode) {
 
     // Reveal the answer only after the round has finished.
     correctAnswer:
-      room.status === "finished" || room.status === "ended" ? room.correctAnswer : null,
+      room.status === "finished" || room.status === "ended"
+        ? room.correctAnswer
+        : null,
 
     winner: room.winner ? { nickname: room.winner.nickname } : null,
   };
@@ -82,77 +84,64 @@ function registerGameSocket(io) {
   io.on("connection", (socket) => {
     console.log(`Connected: ${socket.id}`);
 
-    socket.on("room:subscribe", async (payload, callback) => {
-      try {
-        const { roomCode, sessionId } = payload || {};
+    socket.on("room:subscribe", async (data, callback) => {
+  try {
+    const { roomCode, sessionId } = data || {};
 
-        if (typeof roomCode !== "string" || typeof sessionId !== "string") {
-          return callback?.({
-            success: false,
-            message: "Room code and session ID are required.",
-          });
-        }
+    if (!roomCode || !sessionId) {
+      throw new Error("Room code and session ID are required.");
+    }
 
-        const normalizedCode = roomCode.trim().toUpperCase();
+    const normalizedCode = roomCode.trim().toUpperCase();
 
-        const room = await Room.findOne({
-          roomCode: normalizedCode,
-        });
-
-        if (!room) {
-          return callback?.({
-            success: false,
-            message: "Room not found.",
-          });
-        }
-
-        const user = await User.findOne({ sessionId });
-
-        if (!user) {
-          return callback?.({
-            success: false,
-            message: "Invalid session.",
-          });
-        }
-
-        const isHost = room.host.equals(user._id);
-        const isPlayer = room.players.some((id) => id.equals(user._id));
-
-        if (!isHost && !isPlayer) {
-          return callback?.({
-            success: false,
-            message: "You do not belong to this room.",
-          });
-        }
-
-        await socket.join(getSocketRoom(normalizedCode));
-
-        const roomData = await getRoomData(normalizedCode);
-
-        callback?.({
-          success: true,
-          data: roomData,
-        });
-
-        // Restore the round timer if the server has no timer for it.
-        if (
-          room.status === "active" &&
-          room.endsAt &&
-          !roundTimers.has(normalizedCode)
-        ) {
-          scheduleRoundEnd(io, normalizedCode, room.endsAt);
-        }
-
-        io.to(getSocketRoom(normalizedCode)).emit("room:updated", roomData);
-      } catch (error) {
-        console.error("Room subscription error:", error.message);
-
-        callback?.({
-          success: false,
-          message: "Unable to subscribe to room updates.",
-        });
-      }
+    const room = await Room.findOne({
+      roomCode: normalizedCode
     });
+
+    if (!room) {
+      throw new Error("Room not found.");
+    }
+
+    const user = await User.findOne({ sessionId });
+
+    if (!user) {
+      throw new Error("User session not found.");
+    }
+
+    const isHost = room.host.toString() === user._id.toString();
+
+    const isPlayer = room.players.some(
+      playerId => playerId.toString() === user._id.toString()
+    );
+
+    if (!isHost && !isPlayer) {
+      throw new Error("You are not a member of this room.");
+    }
+
+    // Join the correct Socket.IO room before sending updates.
+    await socket.join(getSocketRoom(normalizedCode));
+
+    const roomData = await getRoomData(normalizedCode);
+
+    callback?.({
+      success: true,
+      data: roomData
+    });
+
+    // Resume the round timer if an active room is rejoined.
+    if (room.status === "active" && room.endsAt) {
+      scheduleRoundEnd(io, normalizedCode, room.endsAt);
+    }
+
+  } catch (error) {
+    console.error("Room subscription failed:", error.message);
+
+    callback?.({
+      success: false,
+      message: error.message || "Could not subscribe to the room."
+    });
+  }
+});
 
     socket.on("game:question:set", async (payload, callback) => {
       try {
@@ -237,34 +226,43 @@ function registerGameSocket(io) {
       }
     });
 
-    socket.on("game:game:end", async (payload, callback) => {
+    socket.on("game:game:end", async (data, callback) => {
+        console.log("SERVER: Received game:game:end", data);
       try {
-        const { roomCode, sessionId } = payload || {};
+        const { roomCode, sessionId } = data;
 
-        const room = await gameService.endGame(roomCode, sessionId);
-        const normalizedCode = room.roomCode;
+        await gameService.endGame(roomCode, sessionId);
 
-        // Stop the current round timer.
-        const timer = roundTimers.get(normalizedCode);
+        const roomName = `game:${roomCode}`;
 
-        if (timer) {
-          clearTimeout(timer);
-          roundTimers.delete(normalizedCode);
+        console.log(`Broadcasting game:ended to ${roomName}`);
+
+        io.to(roomName).emit("game:ended");
+
+        if (typeof callback === "function") {
+          callback({
+            success: true,
+            message: "Game ended successfully.",
+          });
         }
-
-        await broadcastRoom(io, normalizedCode);
-
-        callback?.({
-          success: true,
-          message: "The game has ended.",
-        });
       } catch (error) {
-        callback?.({
-          success: false,
-          message: error.message || "Unable to end the game.",
-        });
+        console.error("Error ending game:", error.message);
+
+        if (typeof callback === "function") {
+          callback({
+            success: false,
+            message: error.message,
+          });
+        }
       }
     });
+
+    // socket.on("game:ended", () => {
+    //   console.log("Game ended event received");
+
+    //   document.getElementById("lobby-section")?.classList.add("hidden");
+    //   document.getElementById("entry-section")?.classList.remove("hidden");
+    // });
 
     socket.on("game:game:restart", async (payload, callback) => {
       try {

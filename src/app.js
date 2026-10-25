@@ -19,8 +19,14 @@ app.use(express.static(path.join(__dirname, '../public')))
 app.use('/api/rooms', roomRouter);
 
 //homepage
-app.get('/', (req,res)=>{
-    res.render('index')
-})
+app.get('/', (req, res) => {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+
+  res.render('index');
+});
 
 module.exports = app
